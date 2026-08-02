@@ -1,0 +1,130 @@
+name: build-release
+
+# トリガー: タグ push (v*) と手動 (workflow_dispatch)
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: >-
+          リリースに使うタグ名 (例: v1.0.0)。空欄の場合は
+          manual-release-<RUN_NUMBER> が使われます。タグは無ければ自動で作成されます。
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows exe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Python 3.11 / 3.12 のどちらでもビルド可能 (ここでは 3.12 を使用)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller --clean --noconfirm build.spec
+
+      - name: Verify artifact
+        shell: cmd
+        run: |
+          if not exist dist\pdf-redact.exe (exit /b 1)
+          dir dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-redact-windows
+          path: dist/pdf-redact.exe
+          if-no-files-found: error
+
+  build-macos:
+    name: Build macOS app
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller --clean --noconfirm build.spec
+
+      - name: Verify artifact
+        run: |
+          test -d dist/pdf-redact.app || exit 1
+          ls -la dist
+
+      # コード署名なしのため zip に固める (ditto でパーミッション等を保持)
+      - name: Package .app as zip
+        run: |
+          ditto -c -k --keepParent dist/pdf-redact.app pdf-redact-macos.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-redact-macos
+          path: pdf-redact-macos.zip
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: [build-windows, build-macos]
+    # 両ビルドが成功した場合のみ (タグ push でも workflow_dispatch でも)
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Determine release tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${{ github.ref_name }}"
+          elif [ -n "${{ github.event.inputs.release_tag }}" ]; then
+            TAG="${{ github.event.inputs.release_tag }}"
+          else
+            TAG="manual-release-${{ github.run_number }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          FILES=(artifacts/pdf-redact.exe artifacts/pdf-redact-macos.zip)
+          for f in "${FILES[@]}"; do
+            [ -f "$f" ] || { echo "Missing artifact: $f" >&2; exit 1; }
+          done
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — uploading files..."
+            gh release upload "$TAG" "${FILES[@]}"
+          else
+            echo "Creating release $TAG ..."
+            gh release create "$TAG" "${FILES[@]}" \
+              --generate-notes \
+              --title "pdf-redact $TAG"
+          fi

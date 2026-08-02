@@ -8,14 +8,42 @@
 テキスト・画像を PDF から物理的に削除**します。保存後の PDF から
 テキスト抽出しても、黒塗り部分の中身が取り出されることはありません。
 
+## すぐ使う（推奨）
+
+Python 環境を用意せず、ビルド済みの配布物を**ダウンロードしてダブルクリック**するだけで使えます。
+
+### Windows
+
+1. GitHub Releases から **`pdf-redact.exe`** をダウンロードします。
+2. ダウンロードした `pdf-redact.exe` を**ダブルクリック**して起動します。
+
+インストールは不要です。
+
+### macOS
+
+1. GitHub Releases から **`pdf-redact-macos.zip`** をダウンロードします。
+2. zip を解凍すると **`pdf-redact.app`** が現れます。
+3. `pdf-redact.app` を**ダブルクリック**して起動します。
+
+> **初回起動時**: コード署名をしていないアプリのため、初回は「開発元を
+> 確認できないため開けません」と表示される場合があります。その場合は
+> `pdf-redact.app` を**右クリック →「開く」** を選び、確認ダイアログで
+> **「開く」** をクリックすると起動できます（2 回目以降はダブルクリックで
+> 起動できます）。
+
 ## 動作環境
 
-- Python 3.9 以上（3.9+ の構文のみを使用）
-- OS: Windows / macOS / Linux
-- 依存ライブラリ: **PyMuPDF（pymupdf）のみ**
-- GUI は標準ライブラリの tkinter を使用（PyQt 等は不要）
+- **配布版（`pdf-redact.exe` / `pdf-redact.app`）**
+  - OS: Windows 10 / 11（64bit）
+  - macOS 12 以上（Apple Silicon / Intel）
+  - インストール不要、ダブルクリックで起動
+- **開発者向け（Python で直接実行）**
+  - Python 3.9 以上（3.9+ の構文のみを使用）
+  - OS: Windows / macOS / Linux（Linux は Python 環境での実行のみ対応）
+  - 依存ライブラリ: **PyMuPDF（pymupdf）のみ**
+  - GUI は標準ライブラリの tkinter を使用（PyQt 等は不要）
 
-## インストール
+## 開発者向け: インストール（Python 環境）
 
 仮想環境（venv）を作成し、PyMuPDF をインストールします。
 
@@ -119,5 +147,7 @@ redact.py         tkinter GUI アプリ本体（エントリポイント）
 redact_core.py    PyMuPDF を使った黒塗りロジック（GUI 非依存）
 test_redact.py    検証スクリプト
 requirements.txt  依存ライブラリ（pymupdf）
+build.spec        PyInstaller のビルド設定（exe / .app 生成用）
+.github/          ビルド・リリース用の GitHub Actions ワークフロー
 README.md         このファイル
 ```
