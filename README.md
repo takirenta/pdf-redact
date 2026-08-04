@@ -99,6 +99,13 @@ python3 -m pip install -r requirements.txt
 python3 redact.py    # Windows では: python redact.py
 ```
 
+## 画面イメージ
+
+![PDF黒塗りツールの画面](docs/screenshot.png)
+
+PDFを開くとページが表示され、ドラッグした範囲が黒く塗りつぶされます
+（例では住所・電話番号の行を黒塗りしています）。
+
 ## 使い方
 
 1. **「PDFを開く」** ボタンで黒塗りしたい PDF を選択します。
